@@ -1,0 +1,30 @@
+---
+- name: get vars
+  include_vars:
+    file: vms-config.yml
+    name: domains
+- name: create overlay for all domains
+  shell: virsh snapshot-create-as --domain {{ item[0].VMName }} dbu.{{ ansible_date_time.date }} --no-metadata --quiesce   --diskspec vda,file={{ item[1].tmpDir }}{{ item[0].VMName }}-{{ item[1].target}}-{{ ansible_date_time.date }}.qcow2 --disk-only --atomic
+  with_subelements:
+    - "{{ domains.vms }}"
+    - disks
+  when:
+    - item[1].backup == "truex"
+# add statment to avoid if vm is down
+- name: backup the images
+  shell: rsync -avh  {{ item[1].pathDir }}{{ item[1].pathFile }} {{ item[1].backDir }}{{ item[0].VMName }}-{{ item[1].target}}-{{ ansible_date_time.date }}-{{ item[1].pathFile }}
+  with_subelements:
+    - "{{ domains.vms }}"
+    - disks
+  when:
+    - item[1].backup == "truex"
+- name: block commit
+  shell: virsh blockcommit {{ item[0].VMName }} {{ item[1].target }} --active --verbose --pivot
+  with_subelements:
+    - "{{ domains.vms }}"
+    - disks
+  when:
+    - item[1].backup == "true"
+# add statment to avoid if vm is down
+
+
